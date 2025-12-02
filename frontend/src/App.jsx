@@ -5,10 +5,10 @@ function App() {
 
   useEffect(() => {
     // En desarrollo, la API está en localhost:8000
-    fetch("http://127.0.0.1:8000/api/ping/")
+    fetch(`${API_URL}/api/ping/`)
       .then((res) => res.json())
-      .then((data) => {
-        setMensaje(data.message);
+      .then((data) => 
+        {setMensaje(data.message);
       })
       .catch((err) => {
         console.error(err);
