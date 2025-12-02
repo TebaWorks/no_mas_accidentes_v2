@@ -38,12 +38,36 @@ class ProfesionalViewSet(viewsets.ModelViewSet):
 
 
 class ClaseViewSet(viewsets.ModelViewSet):
-    queryset = Clase.objects.select_related(
-        "cliente", "solicitada_por", "profesional_asignado"
-    )
     serializer_class = ClaseSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_queryset(self):
+        """
+        Permite filtrar:
+        - ?cliente_id=<id>
+        - ?profesional_id=<id>
+        - ?estado=<ESTADO>
+        """
+        qs = Clase.objects.select_related(
+            "cliente", "solicitada_por", "profesional_asignado"
+        )
+
+        cliente_id = self.request.query_params.get("cliente_id")
+        profesional_id = self.request.query_params.get("profesional_id")
+        estado = self.request.query_params.get("estado")
+
+        if cliente_id:
+            qs = qs.filter(cliente_id=cliente_id)
+
+        if profesional_id:
+            qs = qs.filter(profesional_asignado_id=profesional_id)
+
+        if estado:
+            qs = qs.filter(estado=estado)
+
+        return qs
+
     def perform_create(self, serializer):
-        # En el futuro, cuando tengamos autenticación, aquí usaremos request.user
+        # Más adelante, cuando haya autenticación, aquí usaremos self.request.user
         return serializer.save()
+
