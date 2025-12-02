@@ -4,6 +4,9 @@ import Home from "./pages/Home.jsx";
 import RegistrarClase from "./pages/RegistrarClase.jsx";
 import ClasesCliente from "./pages/ClasesCliente.jsx";
 import ClasesProfesional from "./pages/ClasesProfesional.jsx";
+import AdminClientes from "./pages/AdminClientes.jsx";
+import AdminProfesionales from "./pages/AdminProfesionales.jsx";
+import AdminClases from "./pages/AdminClases.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -142,6 +145,7 @@ function App() {
           {/* CONTENIDO CENTRAL */}
           <section className="content">
             <Routes>
+              {/* General */}
               <Route path="/" element={<Home />} />
 
               {/* Cliente */}
@@ -157,34 +161,13 @@ function App() {
                 element={<ClasesProfesional />}
               />
 
-              {/* Admin (más adelante agregamos páginas reales) */}
-              <Route
-                path="/admin/clientes"
-                element={
-                  <div className="card">
-                    <h2>Gestión de clientes (Admin)</h2>
-                    <p>Página en construcción.</p>
-                  </div>
-                }
-              />
+              {/* Admin */}
+              <Route path="/admin/clientes" element={<AdminClientes />} />
               <Route
                 path="/admin/profesionales"
-                element={
-                  <div className="card">
-                    <h2>Gestión de profesionales (Admin)</h2>
-                    <p>Página en construcción.</p>
-                  </div>
-                }
+                element={<AdminProfesionales />}
               />
-              <Route
-                path="/admin/clases"
-                element={
-                  <div className="card">
-                    <h2>Gestión de clases (Admin)</h2>
-                    <p>Página en construcción.</p>
-                  </div>
-                }
-              />
+              <Route path="/admin/clases" element={<AdminClases />} />
             </Routes>
           </section>
         </div>
@@ -194,3 +177,4 @@ function App() {
 }
 
 export default App;
+
