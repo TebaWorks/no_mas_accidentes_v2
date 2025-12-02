@@ -1,0 +1,24 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/core/__pycache__/
+backend/api/__pycache__/
+*.pyc
+
+# Django
+backend/staticfiles/
+
+# SQLite (si la usas)
+backend/db.sqlite3
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Vite
+.DS_Store
+
+# Env files
+backend/.env
+frontend/.env
+.env
