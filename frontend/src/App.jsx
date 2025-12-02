@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 
 function App() {
   const [mensaje, setMensaje] = useState("Cargando...");
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
-    // En desarrollo, la API está en localhost:8000
     fetch(`${API_URL}/api/ping/`)
       .then((res) => res.json())
-      .then((data) => 
-        {setMensaje(data.message);
+      .then((data) => {
+        setMensaje(data.message);
       })
       .catch((err) => {
         console.error(err);
         setMensaje("Error conectando con la API 😢");
       });
-  }, []);
+  }, [API_URL]);
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: "20px" }}>
@@ -26,3 +26,4 @@ function App() {
 }
 
 export default App;
+
