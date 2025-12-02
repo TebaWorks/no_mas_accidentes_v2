@@ -10,40 +10,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer()
+    profile = UserProfileSerializer(read_only=True)
 
     class Meta:
         model = User
         fields = ["id", "username", "first_name", "last_name", "email", "profile"]
-
-    def create(self, validated_data):
-        profile_data = validated_data.pop("profile", {})
-        password = validated_data.pop("password", None)
-
-        user = User(**validated_data)
-        if password:
-            user.set_password(password)
-        user.save()
-
-        UserProfile.objects.create(user=user, **profile_data)
-        return user
-
-    def update(self, instance, validated_data):
-        profile_data = validated_data.pop("profile", {})
-        profile = instance.profile
-
-        for attr, value in validated_data.items():
-            if attr == "password":
-                instance.set_password(value)
-            else:
-                setattr(instance, attr, value)
-        instance.save()
-
-        for attr, value in profile_data.items():
-            setattr(profile, attr, value)
-        profile.save()
-
-        return instance
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -53,17 +24,40 @@ class ClienteSerializer(serializers.ModelSerializer):
 
 
 class ProfesionalSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    # Lectura
+    user_data = UserSerializer(source="user", read_only=True)
+    # Escritura: solo enviar el id del usuario
+    user_id = serializers.PrimaryKeyRelatedField(
+        source="user",
+        queryset=User.objects.all(),
+        write_only=True,
+    )
 
     class Meta:
         model = Profesional
-        fields = ["id", "user", "especialidad", "registro_profesional", "disponible"]
+        fields = [
+            "id",
+            "user_data",
+            "user_id",
+            "especialidad",
+            "registro_profesional",
+            "disponible",
+        ]
 
 
 class ClaseSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
     profesional_nombre = serializers.SerializerMethodField()
     solicitante_nombre = serializers.SerializerMethodField()
+
+    # Para asignar profesional desde el frontend, enviamos solo el id
+    profesional_asignado_id = serializers.PrimaryKeyRelatedField(
+        source="profesional_asignado",
+        queryset=Profesional.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Clase
@@ -79,17 +73,21 @@ class ClaseSerializer(serializers.ModelSerializer):
             "solicitada_por",
             "solicitante_nombre",
             "profesional_asignado",
+            "profesional_asignado_id",
             "profesional_nombre",
             "creado_en",
             "actualizado_en",
         ]
 
     def get_profesional_nombre(self, obj):
-        if obj.profesional_asignado:
-            return obj.profesional_asignado.get_full_name() or obj.profesional_asignado.username
+        if obj.profesional_asignado and obj.profesional_asignado.user:
+            u = obj.profesional_asignado.user
+            nombre = u.get_full_name() or u.username
+            return nombre
         return None
 
     def get_solicitante_nombre(self, obj):
         if obj.solicitada_por:
             return obj.solicitada_por.get_full_name() or obj.solicitada_por.username
         return None
+
