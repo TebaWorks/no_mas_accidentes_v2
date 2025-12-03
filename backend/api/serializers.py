@@ -59,6 +59,15 @@ class ClaseSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    # Para indicar quién solicitó la clase (usuario)
+    solicitada_por_id = serializers.PrimaryKeyRelatedField(
+        source="solicitada_por",
+        queryset=User.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Clase
         fields = [
@@ -71,6 +80,7 @@ class ClaseSerializer(serializers.ModelSerializer):
             "cliente",
             "cliente_nombre",
             "solicitada_por",
+            "solicitada_por_id",
             "solicitante_nombre",
             "profesional_asignado",
             "profesional_asignado_id",
@@ -90,4 +100,5 @@ class ClaseSerializer(serializers.ModelSerializer):
         if obj.solicitada_por:
             return obj.solicitada_por.get_full_name() or obj.solicitada_por.username
         return None
+
 

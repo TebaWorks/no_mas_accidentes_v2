@@ -18,11 +18,24 @@ def ping(request):
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    De momento solo lectura. Más adelante podemos permitir crear usuarios desde admin.
+    De momento solo lectura.
+    Permite filtrar por rol del perfil:
+    - /api/usuarios/?rol=CLIENTE
+    - /api/usuarios/?rol=PROFESIONAL
+    - /api/usuarios/?rol=ADMIN
     """
-    queryset = User.objects.all().select_related("profile")
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = User.objects.all().select_related("profile")
+        rol = self.request.query_params.get("rol")  # CLIENTE, PROFESIONAL, ADMIN
+
+        if rol:
+            qs = qs.filter(profile__rol=rol)
+
+        return qs
+
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
