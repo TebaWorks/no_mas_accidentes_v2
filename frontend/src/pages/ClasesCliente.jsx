@@ -116,6 +116,12 @@ function ClasesCliente() {
                   {clase.profesional_nombre}
                 </p>
               )}
+              {clase.solicitante_nombre && (
+                <p>
+                    <strong>Solicitada por:</strong> {clase.solicitante_nombre}
+                </p>
+                )}
+
             </div>
           ))}
         </div>

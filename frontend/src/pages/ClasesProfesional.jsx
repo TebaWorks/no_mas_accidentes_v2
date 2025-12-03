@@ -115,6 +115,11 @@ function ClasesProfesional() {
                   <strong>Fecha solicitada:</strong> {clase.fecha_solicitada}
                 </p>
               )}
+              {clase.solicitante_nombre && (
+                <p>
+                    <strong>Solicitada por:</strong> {clase.solicitante_nombre}
+                </p>
+                )}
             </div>
           ))}
         </div>

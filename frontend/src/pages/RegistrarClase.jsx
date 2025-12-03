@@ -4,14 +4,19 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 function RegistrarClase() {
   const [clientes, setClientes] = useState([]);
+  const [usuariosCliente, setUsuariosCliente] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(true);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+
   const [form, setForm] = useState({
     titulo: "",
     descripcion: "",
     fecha_solicitada: "",
     modalidad: "",
     cliente: "",
+    solicitada_por_id: "",
   });
+
   const [estadoEnvio, setEstadoEnvio] = useState(null); // "ok" | "error" | null
   const [mensajeError, setMensajeError] = useState("");
 
@@ -36,6 +41,28 @@ function RegistrarClase() {
     fetchClientes();
   }, []);
 
+  // Cargar usuarios de rol CLIENTE para selector de "solicitada por"
+  useEffect(() => {
+    async function fetchUsuariosCliente() {
+      setLoadingUsuarios(true);
+      try {
+        const res = await fetch(`${API_URL}/api/usuarios/?rol=CLIENTE`);
+        if (!res.ok) {
+          throw new Error("No se pudo cargar usuarios cliente");
+        }
+        const data = await res.json();
+        setUsuariosCliente(data);
+      } catch (error) {
+        console.error(error);
+        // no es crítico, puede seguir sin usuarios
+      } finally {
+        setLoadingUsuarios(false);
+      }
+    }
+
+    fetchUsuariosCliente();
+  }, []);
+
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -55,13 +82,25 @@ function RegistrarClase() {
       return;
     }
 
+    const payload = {
+      titulo: form.titulo,
+      descripcion: form.descripcion,
+      fecha_solicitada: form.fecha_solicitada || null,
+      modalidad: form.modalidad,
+      cliente: form.cliente ? Number(form.cliente) : null,
+      // Si se seleccionó un usuario solicitante, lo mandamos
+      solicitada_por_id: form.solicitada_por_id
+        ? Number(form.solicitada_por_id)
+        : null,
+    };
+
     try {
       const res = await fetch(`${API_URL}/api/clases/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -80,6 +119,7 @@ function RegistrarClase() {
         fecha_solicitada: "",
         modalidad: "",
         cliente: "",
+        solicitada_por_id: "",
       });
     } catch (error) {
       console.error(error);
@@ -136,6 +176,30 @@ function RegistrarClase() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="solicitada_por_id">Solicitada por (usuario)</label>
+          <select
+            id="solicitada_por_id"
+            name="solicitada_por_id"
+            value={form.solicitada_por_id}
+            onChange={handleChange}
+            disabled={loadingUsuarios || usuariosCliente.length === 0}
+          >
+            <option value="">Opcional: selecciona un usuario...</option>
+            {usuariosCliente.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.username}{" "}
+                {u.first_name || u.last_name
+                  ? `- ${u.first_name || ""} ${u.last_name || ""}`
+                  : ""}
+              </option>
+            ))}
+          </select>
+          {loadingUsuarios && (
+            <small>Cargando usuarios cliente...</small>
+          )}
         </div>
 
         <div className="form-group">
@@ -196,3 +260,4 @@ function RegistrarClase() {
 }
 
 export default RegistrarClase;
+
