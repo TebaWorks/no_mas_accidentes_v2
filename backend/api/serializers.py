@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, Cliente, Profesional, Clase
+from .models import UserProfile, Cliente, Profesional, Clase, SystemConfig
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -195,6 +195,26 @@ class ClaseSerializer(serializers.ModelSerializer):
             "creado_en",
             "actualizado_en",
         ]
+
+class SystemConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemConfig
+        fields = [
+            "id",
+            "nombre_sistema",
+            "razon_social",
+            "rut_empresa",
+            "direccion",
+            "telefono_contacto",
+            "email_contacto",
+            "sitio_web",
+            "dias_min_anticipacion_cancelacion",
+            "permitir_registro_publico_clientes",
+            "texto_portada",
+            "actualizado_en",
+        ]
+        read_only_fields = ["id", "actualizado_en"]
+
 
     def get_profesional_nombre(self, obj):
         if obj.profesional_asignado and obj.profesional_asignado.user:

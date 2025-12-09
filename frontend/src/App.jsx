@@ -18,6 +18,8 @@ import Login from "./pages/Login.jsx";
 import RegisterCliente from "./pages/RegisterCliente.jsx";
 import PerfilProfesional from "./pages/PerfilProfesional.jsx";
 import AdminUsuarios from "./pages/AdminUsuarios.jsx";
+import AdminConfig from "./pages/AdminConfig.jsx";
+
 
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -224,6 +226,14 @@ function AppContent() {
                     >
                       Gestionar usuarios
                     </NavLink>
+                    <NavLink
+                      to="/admin/config"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Configuración del sistema
+                    </NavLink>
                   </>
                 )}
               </nav>
@@ -295,6 +305,10 @@ function AppContent() {
                       <Route 
                       path="/admin/usuarios" 
                       element={<AdminUsuarios />} 
+                      />
+                      <Route 
+                      path="/admin/config" 
+                      element={<AdminConfig />} 
                       />
                     </>
                   )}

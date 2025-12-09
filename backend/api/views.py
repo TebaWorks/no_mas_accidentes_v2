@@ -1,6 +1,6 @@
-from rest_framework import viewsets, permissions, decorators, response, status
+from rest_framework import viewsets, permissions, decorators, response, status, generics
 from django.contrib.auth.models import User
-from .models import Cliente, Profesional, Clase
+from .models import Cliente, Profesional, Clase, SystemConfig
 from .serializers import (
     UserSerializer,
     UserAdminSerializer,
@@ -9,7 +9,8 @@ from .serializers import (
     ClaseSerializer,
     RegistroClienteSerializer,
     ProfesionalAdminCreateSerializer,
-    ProfesionalDetalleSerializer
+    ProfesionalDetalleSerializer,
+    SystemConfigSerializer
 )
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -245,4 +246,26 @@ class RegistroClienteView(APIView):
             data = UserSerializer(user).data
             return Response(data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ConfigView(generics.RetrieveUpdateAPIView):
+    """
+    Devuelve y permite actualizar la configuración global del sistema.
+    - GET /api/config/  -> obtiene la configuración
+    - PUT /api/config/  -> actualiza todo
+    - PATCH /api/config/ -> actualiza campos puntuales
+    Solo ADMIN (is_staff) puede editar. Otros podrían ser solo lectura si quisieras.
+    """
 
+    serializer_class = SystemConfigSerializer
+
+    def get_object(self):
+        # Siempre devolvemos el único registro de configuración.
+        config, _ = SystemConfig.objects.get_or_create(id=1)
+        return config
+
+    def get_permissions(self):
+        # GET: cualquier usuario autenticado puede leer (si quieres)
+        # PUT/PATCH: solo admin
+        if self.request.method in ["PUT", "PATCH"]:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]

@@ -27,6 +27,7 @@ urlpatterns = [
         views.RegistroClienteView.as_view(),
         name="registro_cliente",
     ),
+    path("config/", views.ConfigView.as_view(), name="config"),
 
     # Rutas del router (usuarios, clientes, profesionales, clases)
     path("", include(router.urls)),

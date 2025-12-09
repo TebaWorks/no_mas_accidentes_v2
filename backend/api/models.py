@@ -182,3 +182,73 @@ class Clase(models.Model):
 
     def __str__(self):
         return f"{self.titulo} ({self.get_estado_display()})"
+
+class SystemConfig(models.Model):
+    """
+    Configuración global del sistema (solo debe existir un registro).
+    Usado para datos de la empresa y parámetros generales.
+    """
+
+    nombre_sistema = models.CharField(
+        "Nombre del sistema",
+        max_length=150,
+        default="No Más Accidentes"
+    )
+    razon_social = models.CharField(
+        "Razón social",
+        max_length=200,
+        blank=True,
+        help_text="Nombre legal de la empresa"
+    )
+    rut_empresa = models.CharField(
+        "RUT empresa",
+        max_length=20,
+        blank=True,
+    )
+    direccion = models.CharField(
+        "Dirección",
+        max_length=255,
+        blank=True,
+    )
+    telefono_contacto = models.CharField(
+        "Teléfono de contacto",
+        max_length=30,
+        blank=True,
+    )
+    email_contacto = models.EmailField(
+        "Correo de contacto",
+        blank=True,
+    )
+    sitio_web = models.CharField(
+        "Sitio web",
+        max_length=200,
+        blank=True,
+    )
+
+    dias_min_anticipacion_cancelacion = models.PositiveIntegerField(
+        "Días mínimos de anticipación para cancelar clase",
+        default=2,
+        help_text="Se puede usar como referencia al validar cancelaciones."
+    )
+
+    permitir_registro_publico_clientes = models.BooleanField(
+        "Permitir registro público de clientes",
+        default=True,
+        help_text="Si está en False, se podría bloquear el formulario /registro-cliente."
+    )
+
+    texto_portada = models.CharField(
+        "Mensaje de portada",
+        max_length=255,
+        blank=True,
+        help_text="Texto corto para mostrar en la página de inicio."
+    )
+
+    actualizado_en = models.DateTimeField("Actualizado en", auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración del sistema"
+        verbose_name_plural = "Configuración del sistema"
+
+    def __str__(self):
+        return self.nombre_sistema or "Configuración del sistema"
