@@ -12,146 +12,238 @@ const ESTADOS = [
 
 function AdminClases() {
   const [clases, setClases] = useState([]);
-  const [profesionales, setProfesionales] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mensajeError, setMensajeError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+
+  const token = localStorage.getItem("token");
 
   async function cargarClases() {
     setLoading(true);
-    setMensajeError("");
+    setMensaje("");
+
     try {
-      const res = await fetch(`${API_URL}/api/clases/`);
-      if (!res.ok) throw new Error("Error al cargar clases");
+      const res = await fetch(`${API_URL}/api/clases/`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      if (!res.ok) {
+        setMensaje("No se pudieron cargar las clases.");
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
       setClases(data);
-    } catch (err) {
-      console.error(err);
-      setMensajeError("No se pudieron cargar las clases.");
+    } catch (error) {
+      console.error(error);
+      setMensaje("Error al cargar las clases.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function cargarProfesionales() {
-    try {
-      const res = await fetch(`${API_URL}/api/profesionales/`);
-      if (!res.ok) throw new Error("Error al cargar profesionales");
-      const data = await res.json();
-      setProfesionales(data);
-    } catch (err) {
-      console.error(err);
-      setMensajeError("Error al cargar lista de profesionales.");
-    }
-  }
-
   useEffect(() => {
     cargarClases();
-    cargarProfesionales();
   }, []);
 
-  async function actualizarClase(id, cambios) {
+  async function actualizarClase(id, payload) {
     try {
       const res = await fetch(`${API_URL}/api/clases/${id}/`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cambios),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        console.error("Error al actualizar clase", await res.text());
-        throw new Error("Error al actualizar clase");
+        console.error("Error actualizando clase:", await res.text());
+        setMensaje("No se pudo actualizar la clase.");
+        return;
       }
 
-      await cargarClases();
-    } catch (err) {
-      console.error(err);
-      setMensajeError("No se pudo actualizar la clase.");
+      setMensaje("Clase actualizada correctamente.");
+      cargarClases();
+    } catch (error) {
+      console.error(error);
+      setMensaje("Error al actualizar la clase.");
     }
   }
 
-  function handleCambioEstado(id, nuevoEstado) {
-    actualizarClase(id, { estado: nuevoEstado });
+  function handleCambiarEstado(clase, nuevoEstado) {
+    actualizarClase(clase.id, { estado: nuevoEstado });
   }
 
-  function handleCambioProfesional(id, profesionalId) {
-    const payload =
-      profesionalId === ""
-        ? { profesional_asignado_id: null }
-        : { profesional_asignado_id: Number(profesionalId) };
-    actualizarClase(id, payload);
+  function handleCambiarFecha(clase) {
+    const nuevaFecha = window.prompt(
+      "Nueva fecha solicitada (formato YYYY-MM-DD):",
+      clase.fecha_solicitada || ""
+    );
+
+    if (!nuevaFecha) return;
+    actualizarClase(clase.id, { fecha_solicitada: nuevaFecha });
   }
+
+  async function handleEliminarClase(clase) {
+    const confirmar = window.confirm(
+      `¿Seguro que quieres eliminar la clase "${clase.titulo}"? Esta acción es permanente.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/clases/${clase.id}/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      if (res.status !== 204 && !res.ok) {
+        console.error("Error eliminando clase:", await res.text());
+        setMensaje("No se pudo eliminar la clase.");
+        return;
+      }
+
+      setMensaje("Clase eliminada correctamente.");
+      cargarClases();
+    } catch (error) {
+      console.error(error);
+      setMensaje("Error al eliminar la clase.");
+    }
+  }
+
+  const totalPendientes = clases.filter((c) => c.estado === "PENDIENTE").length;
+  const totalActivas = clases.filter((c) =>
+    ["PENDIENTE", "ASIGNADA", "ACEPTADA"].includes(c.estado)
+  ).length;
+  const totalCompletadas = clases.filter(
+    (c) => c.estado === "COMPLETADA"
+  ).length;
 
   return (
     <div className="card">
-      <h2>Gestión de clases (Admin)</h2>
+      <h2>Gestión de clases</h2>
+      <p className="card-subtitle">
+        Como administrador puedes revisar y administrar todas las clases
+        solicitadas, cambiar su estado, modificar la fecha o eliminarlas.
+      </p>
 
-      {mensajeError && (
-        <p style={{ color: "#b00020", marginTop: "0.5rem" }}>{mensajeError}</p>
+      <div className="grid-resumen">
+        <div className="card" style={{ padding: "0.8rem" }}>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Pendientes</p>
+          <p style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+            {totalPendientes}
+          </p>
+        </div>
+        <div className="card" style={{ padding: "0.8rem" }}>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Activas</p>
+          <p style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+            {totalActivas}
+          </p>
+        </div>
+        <div className="card" style={{ padding: "0.8rem" }}>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Completadas</p>
+          <p style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+            {totalCompletadas}
+          </p>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: "0.5rem",
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <button className="btn-secundario" onClick={cargarClases}>
+          Recargar
+        </button>
+      </div>
+
+      {mensaje && (
+        <p style={{ marginTop: "0.6rem", fontSize: "0.9rem" }}>{mensaje}</p>
       )}
 
       {loading ? (
-        <p>Cargando clases...</p>
+        <p style={{ marginTop: "1rem" }}>Cargando clases...</p>
       ) : clases.length === 0 ? (
-        <p>No hay clases registradas.</p>
+        <p style={{ marginTop: "1rem" }}>No hay clases registradas.</p>
       ) : (
-        <div className="lista-clases">
-          {clases.map((clase) => (
-            <div key={clase.id} className="item-clase">
-              <h3>{clase.titulo}</h3>
-              <p>{clase.descripcion}</p>
-              <p>
-                <strong>Cliente:</strong> {clase.cliente_nombre}
-              </p>
-              {clase.solicitante_nombre && (
-                <p>
-                  <strong>Solicitada por:</strong> {clase.solicitante_nombre}
-                </p>
-              )}
-
-              {/* Estado */}
-              <div className="form-group" style={{ marginTop: "0.5rem" }}>
-                <label>Estado</label>
-                <select
-                  value={clase.estado}
-                  onChange={(e) =>
-                    handleCambioEstado(clase.id, e.target.value)
-                  }
-                >
-                  {ESTADOS.map((est) => (
-                    <option key={est} value={est}>
-                      {est}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Profesional asignado */}
-              <div className="form-group" style={{ marginTop: "0.5rem" }}>
-                <label>Profesional asignado</label>
-                <select
-                  value={clase.profesional_asignado ?? ""}
-                  onChange={(e) =>
-                    handleCambioProfesional(clase.id, e.target.value)
-                  }
-                >
-                  <option value="">— Sin asignar —</option>
-                  {profesionales.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.user_data?.first_name || p.user_data?.username}{" "}
-                      {p.user_data?.last_name || ""}{" "}
-                      {p.especialidad ? `- ${p.especialidad}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {clase.fecha_solicitada && (
-                <p style={{ marginTop: "0.5rem" }}>
-                  <strong>Fecha solicitada:</strong> {clase.fecha_solicitada}
-                </p>
-              )}
-            </div>
-          ))}
+        <div className="table-wrapper" style={{ marginTop: "0.8rem" }}>
+          <table className="table-basic">
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Cliente</th>
+                <th>Profesional</th>
+                <th>Fecha solicitada</th>
+                <th>Estado</th>
+                <th>Cambiar estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clases.map((clase) => (
+                <tr key={clase.id}>
+                  <td>{clase.titulo}</td>
+                  <td>{clase.cliente_nombre || clase.cliente || "—"}</td>
+                  <td>
+                    {clase.profesional_nombre ||
+                      clase.profesional_asignado ||
+                      "—"}
+                  </td>
+                  <td>{clase.fecha_solicitada || "—"}</td>
+                  <td>
+                    <span
+                      className={`chip-estado ${
+                        clase.estado === "PENDIENTE"
+                          ? "chip-pendiente"
+                          : clase.estado === "COMPLETADA" ||
+                            clase.estado === "ACEPTADA"
+                          ? "chip-aceptada"
+                          : "chip-rechazada"
+                      }`}
+                    >
+                      {clase.estado}
+                    </span>
+                  </td>
+                  <td>
+                    <select
+                      value={clase.estado}
+                      onChange={(e) =>
+                        handleCambiarEstado(clase, e.target.value)
+                      }
+                    >
+                      {ESTADOS.map((est) => (
+                        <option key={est} value={est}>
+                          {est}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <button
+                      className="btn-secundario"
+                      style={{ marginRight: "0.3rem" }}
+                      onClick={() => handleCambiarFecha(clase)}
+                    >
+                      Cambiar fecha
+                    </button>
+                    <button
+                      className="btn-secundario"
+                      onClick={() => handleEliminarClase(clase)}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
