@@ -93,7 +93,7 @@ class MeView(APIView):
     Devuelve la info del usuario autenticado + su perfil.
     GET /api/auth/me/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
@@ -114,3 +114,4 @@ class RegistroClienteView(APIView):
             data = UserSerializer(user).data
             return Response(data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
