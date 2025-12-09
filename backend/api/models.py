@@ -3,6 +3,10 @@ from django.contrib.auth.models import User
 
 
 class UserProfile(models.Model):
+    """
+    Perfil extendido para cualquier usuario del sistema.
+    Aquí definimos el rol y datos básicos de contacto.
+    """
     ROLE_CHOICES = [
         ("ADMIN", "Administrador"),
         ("CLIENTE", "Cliente / Usuario"),
@@ -17,11 +21,13 @@ class UserProfile(models.Model):
     )
     rut = models.CharField("RUT", max_length=20, blank=True)
     telefono = models.CharField("Teléfono", max_length=20, blank=True)
+    direccion = models.CharField("Dirección", max_length=255, blank=True)
     rol = models.CharField(
         "Rol",
         max_length=20,
         choices=ROLE_CHOICES,
         default="CLIENTE",
+        help_text="Define el tipo de usuario dentro del sistema.",
     )
 
     class Meta:
@@ -33,6 +39,10 @@ class UserProfile(models.Model):
 
 
 class Cliente(models.Model):
+    """
+    Cliente del sistema (empresa que contrata las clases).
+    Opcionalmente puede estar vinculado a un usuario responsable.
+    """
     nombre = models.CharField("Nombre de la empresa", max_length=150)
     rut = models.CharField("RUT Empresa", max_length=20, unique=True)
     direccion = models.CharField("Dirección", max_length=255, blank=True)
@@ -64,6 +74,10 @@ class Cliente(models.Model):
 
 
 class Profesional(models.Model):
+    """
+    Profesional que dicta clases.
+    Siempre está asociado a un usuario del sistema con rol PROFESIONAL.
+    """
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -95,6 +109,11 @@ class Profesional(models.Model):
 
 
 class Clase(models.Model):
+    """
+    Solicitud de clase / capacitación.
+    Está ligada a un cliente, puede tener usuario solicitante
+    y un profesional asignado.
+    """
     ESTADOS = [
         ("PENDIENTE", "Pendiente"),
         ("ASIGNADA", "Asignada"),
@@ -136,7 +155,7 @@ class Clase(models.Model):
         help_text="Usuario que registra esta solicitud en el sistema.",
     )
 
-    # Profesional que atiende la clase (ahora apuntamos a Profesional, no a User directo)
+    # Profesional que atiende la clase (apunta a Profesional, no a User)
     profesional_asignado = models.ForeignKey(
         Profesional,
         on_delete=models.SET_NULL,
