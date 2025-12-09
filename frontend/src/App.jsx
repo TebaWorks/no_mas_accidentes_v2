@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { NavLink, Route, Routes } from "react-router-dom";
+import {
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
+
 import Home from "./pages/Home.jsx";
 import RegistrarClase from "./pages/RegistrarClase.jsx";
 import ClasesCliente from "./pages/ClasesCliente.jsx";
@@ -7,12 +14,32 @@ import ClasesProfesional from "./pages/ClasesProfesional.jsx";
 import AdminClientes from "./pages/AdminClientes.jsx";
 import AdminProfesionales from "./pages/AdminProfesionales.jsx";
 import AdminClases from "./pages/AdminClases.jsx";
+import Login from "./pages/Login.jsx";
+import RegisterCliente from "./pages/RegisterCliente.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-function App() {
+function AppContent() {
   const [apiStatus, setApiStatus] = useState("Comprobando API...");
-  const [rol, setRol] = useState("CLIENTE"); // CLIENTE | PROFESIONAL | ADMIN
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const location = useLocation();
+
+  // Cargar token y usuario desde localStorage al iniciar
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
 
   // Ping al backend solo para mostrar estado
   useEffect(() => {
@@ -30,6 +57,28 @@ function App() {
     checkApi();
   }, []);
 
+  const rol = user?.profile?.rol || null; // CLIENTE | PROFESIONAL | ADMIN | null
+
+  function handleLogin({ token, user }) {
+    setToken(token);
+    setUser(user);
+  }
+
+  function handleLogout() {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  }
+
+  const isLoginRoute = location.pathname === "/login";
+  const isRegisterRoute = location.pathname === "/registro-cliente";
+
+  // Si no hay usuario y no estamos en login ni registro, redirigimos a /login
+  if (!user && !isLoginRoute && !isRegisterRoute) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="app-layout">
       {/* HEADER */}
@@ -39,19 +88,38 @@ function App() {
           <div className="header-right">
             <span className="api-status">{apiStatus}</span>
 
-            {/* Selector de rol (simulado por ahora) */}
-            <div className="rol-selector">
-              <label htmlFor="rol-select">Rol:</label>
-              <select
-                id="rol-select"
-                value={rol}
-                onChange={(e) => setRol(e.target.value)}
+            {user ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
               >
-                <option value="CLIENTE">Cliente</option>
-                <option value="PROFESIONAL">Profesional</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </div>
+                <div>
+                  <div style={{ fontSize: "0.9rem" }}>
+                    Conectado como <strong>{user.username}</strong>
+                  </div>
+                  {rol && (
+                    <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>
+                      Rol: <strong>{rol}</strong>
+                    </div>
+                  )}
+                </div>
+                <button
+                  className="btn-primario"
+                  type="button"
+                  onClick={handleLogout}
+                  style={{ paddingInline: "0.8rem", fontSize: "0.8rem" }}
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            ) : (
+              <NavLink to="/login" className="nav-link">
+                Iniciar sesión
+              </NavLink>
+            )}
           </div>
         </div>
       </header>
@@ -59,115 +127,156 @@ function App() {
       {/* CONTENIDO */}
       <main className="app-main">
         <div className="dashboard">
-          {/* SIDEBAR */}
-          <aside className="sidebar">
-            <nav>
-              <p className="sidebar-title">Menú</p>
+          {/* SIDEBAR, solo si hay usuario */}
+          {user && (
+            <aside className="sidebar">
+              <nav>
+                <p className="sidebar-title">Menú</p>
 
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
-              >
-                Inicio
-              </NavLink>
+                <NavLink
+                  to="/"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  Inicio
+                </NavLink>
 
-              {rol === "CLIENTE" && (
-                <>
-                  <p className="sidebar-section">Cliente</p>
-                  <NavLink
-                    to="/cliente/registrar-clase"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Registrar clase
-                  </NavLink>
-                  <NavLink
-                    to="/cliente/clases"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Mis clases
-                  </NavLink>
-                </>
-              )}
+                {rol === "CLIENTE" && (
+                  <>
+                    <p className="sidebar-section">Cliente</p>
+                    <NavLink
+                      to="/cliente/registrar-clase"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Registrar clase
+                    </NavLink>
+                    <NavLink
+                      to="/cliente/clases"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Mis clases
+                    </NavLink>
+                  </>
+                )}
 
-              {rol === "PROFESIONAL" && (
-                <>
-                  <p className="sidebar-section">Profesional</p>
-                  <NavLink
-                    to="/profesional/clases"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Clases asignadas
-                  </NavLink>
-                  {/* Más adelante: perfil profesional */}
-                </>
-              )}
+                {rol === "PROFESIONAL" && (
+                  <>
+                    <p className="sidebar-section">Profesional</p>
+                    <NavLink
+                      to="/profesional/clases"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Clases asignadas
+                    </NavLink>
+                  </>
+                )}
 
-              {rol === "ADMIN" && (
-                <>
-                  <p className="sidebar-section">Admin</p>
-                  <NavLink
-                    to="/admin/clientes"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Gestionar clientes
-                  </NavLink>
-                  <NavLink
-                    to="/admin/profesionales"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Gestionar profesionales
-                  </NavLink>
-                  <NavLink
-                    to="/admin/clases"
-                    className={({ isActive }) =>
-                      isActive ? "nav-link active" : "nav-link"
-                    }
-                  >
-                    Gestionar clases
-                  </NavLink>
-                </>
-              )}
-            </nav>
-          </aside>
+                {rol === "ADMIN" && (
+                  <>
+                    <p className="sidebar-section">Admin</p>
+                    <NavLink
+                      to="/admin/clientes"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Gestionar clientes
+                    </NavLink>
+                    <NavLink
+                      to="/admin/profesionales"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Gestionar profesionales
+                    </NavLink>
+                    <NavLink
+                      to="/admin/clases"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Gestionar clases
+                    </NavLink>
+                  </>
+                )}
+              </nav>
+            </aside>
+          )}
 
           {/* CONTENIDO CENTRAL */}
           <section className="content">
             <Routes>
-              {/* General */}
-              <Route path="/" element={<Home />} />
-
-              {/* Cliente */}
+              {/* Rutas públicas */}
               <Route
-                path="/cliente/registrar-clase"
-                element={<RegistrarClase />}
+                path="/login"
+                element={<Login onLogin={handleLogin} />}
               />
-              <Route path="/cliente/clases" element={<ClasesCliente />} />
-
-              {/* Profesional */}
               <Route
-                path="/profesional/clases"
-                element={<ClasesProfesional />}
+                path="/registro-cliente"
+                element={<RegisterCliente />}
               />
 
-              {/* Admin */}
-              <Route path="/admin/clientes" element={<AdminClientes />} />
+              {/* Rutas protegidas: solo si hay user */}
+              {user && (
+                <>
+                  {/* General */}
+                  <Route path="/" element={<Home />} />
+
+                  {/* Cliente */}
+                  {rol === "CLIENTE" && (
+                    <>
+                      <Route
+                        path="/cliente/registrar-clase"
+                        element={<RegistrarClase />}
+                      />
+                      <Route
+                        path="/cliente/clases"
+                        element={<ClasesCliente />}
+                      />
+                    </>
+                  )}
+
+                  {/* Profesional */}
+                  {rol === "PROFESIONAL" && (
+                    <Route
+                      path="/profesional/clases"
+                      element={<ClasesProfesional />}
+                    />
+                  )}
+
+                  {/* Admin */}
+                  {rol === "ADMIN" && (
+                    <>
+                      <Route
+                        path="/admin/clientes"
+                        element={<AdminClientes />}
+                      />
+                      <Route
+                        path="/admin/profesionales"
+                        element={<AdminProfesionales />}
+                      />
+                      <Route
+                        path="/admin/clases"
+                        element={<AdminClases />}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Fallback */}
               <Route
-                path="/admin/profesionales"
-                element={<AdminProfesionales />}
+                path="*"
+                element={<Navigate to={user ? "/" : "/login"} replace />}
               />
-              <Route path="/admin/clases" element={<AdminClases />} />
             </Routes>
           </section>
         </div>
@@ -176,5 +285,6 @@ function App() {
   );
 }
 
-export default App;
-
+export default function App() {
+  return <AppContent />;
+}
