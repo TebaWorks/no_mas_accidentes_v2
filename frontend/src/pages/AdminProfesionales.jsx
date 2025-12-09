@@ -689,27 +689,27 @@ function AdminProfesionales() {
                       {prof.disponible ? "Disponible" : "No disponible"}
                     </span>
                   </td>
-                  <td>
-                    <button
-                      className="btn-secundario"
-                      style={{ marginRight: "0.3rem" }}
-                      onClick={() => irAEditar(prof)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="btn-secundario"
-                      style={{ marginRight: "0.3rem" }}
-                      onClick={() => toggleDisponibilidad(prof)}
-                    >
-                      {prof.disponible ? "Desactivar" : "Activar"}
-                    </button>
-                    <button
-                      className="btn-peligro"
-                      onClick={() => eliminarProfesional(prof)}
-                    >
-                      Eliminar
-                    </button>
+                 <td>
+                    <div className="acciones-prof">
+                      <button
+                        className="btn-secundario"
+                        onClick={() => irAEditar(prof)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn-secundario"
+                        onClick={() => toggleDisponibilidad(prof)}
+                      >
+                        {prof.disponible ? "Desactivar" : "Activar"}
+                      </button>
+                      <button
+                        className="btn-peligro"
+                        onClick={() => eliminarProfesional(prof)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
