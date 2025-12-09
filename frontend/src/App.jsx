@@ -16,6 +16,7 @@ import AdminProfesionales from "./pages/AdminProfesionales.jsx";
 import AdminClases from "./pages/AdminClases.jsx";
 import Login from "./pages/Login.jsx";
 import RegisterCliente from "./pages/RegisterCliente.jsx";
+import PerfilProfesional from "./pages/PerfilProfesional.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -168,6 +169,14 @@ function AppContent() {
                   <>
                     <p className="sidebar-section">Profesional</p>
                     <NavLink
+                      to="/profesional/perfil"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Mi perfil
+                    </NavLink>
+                    <NavLink
                       to="/profesional/clases"
                       className={({ isActive }) =>
                         isActive ? "nav-link active" : "nav-link"
@@ -246,10 +255,16 @@ function AppContent() {
 
                   {/* Profesional */}
                   {rol === "PROFESIONAL" && (
-                    <Route
-                      path="/profesional/clases"
-                      element={<ClasesProfesional />}
-                    />
+                    <>
+                      <Route
+                        path="/profesional/perfil"
+                        element={<PerfilProfesional />}
+                      />
+                      <Route
+                        path="/profesional/clases"
+                        element={<ClasesProfesional />}
+                      />
+                    </>
                   )}
 
                   {/* Admin */}

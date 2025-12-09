@@ -6,12 +6,15 @@ from .serializers import (
     ClienteSerializer,
     ProfesionalSerializer,
     ClaseSerializer,
-    RegistroClienteSerializer
+    RegistroClienteSerializer,
+    ProfesionalAdminCreateSerializer,
+    ProfesionalDetalleSerializer
 )
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 
@@ -49,9 +52,99 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
 
 class ProfesionalViewSet(viewsets.ModelViewSet):
-    queryset = Profesional.objects.select_related("user")
-    serializer_class = ProfesionalSerializer
-    permission_classes = [permissions.AllowAny]  # luego restringimos a admin
+    queryset = Profesional.objects.select_related("user", "user__profile").all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        # Crear profesional (admin)
+        if self.action == "create":
+            return ProfesionalAdminCreateSerializer
+        # Perfil del propio profesional
+        if self.action == "me":
+            return ProfesionalDetalleSerializer
+        # Listado / detalle general
+        return ProfesionalSerializer
+
+    @action(
+        detail=False,
+        methods=["get", "patch"],
+        url_path="me",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def me(self, request):
+        """
+        GET  /api/profesionales/me/   -> ver mis datos
+        PATCH /api/profesionales/me/  -> actualizar mis datos
+        """
+        # ¿Tiene perfil de usuario?
+        profile = getattr(request.user, "profile", None)
+        rol = getattr(profile, "rol", None)
+
+        # Si no es profesional, no hay nada que hacer aquí
+        if rol != "PROFESIONAL" and not request.user.is_staff:
+            return Response(
+                {"detail": "Tu usuario no tiene un perfil de profesional asociado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Intentar obtener el Profesional existente
+        try:
+            profesional = Profesional.objects.select_related(
+                "user", "user__profile"
+            ).get(user=request.user)
+        except Profesional.DoesNotExist:
+            # Si el rol es PROFESIONAL pero aún no hay registro, lo creamos
+            if rol == "PROFESIONAL":
+                profesional = Profesional.objects.create(
+                    user=request.user,
+                    especialidad="",
+                    registro_profesional="",
+                    disponible=True,
+                )
+            else:
+                return Response(
+                    {"detail": "Tu usuario no tiene un perfil de profesional asociado."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        if request.method == "GET":
+            serializer = ProfesionalDetalleSerializer(profesional)
+            return Response(serializer.data)
+
+        # PATCH
+        serializer = ProfesionalDetalleSerializer(
+            profesional, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        DELETE /api/profesionales/{id}/
+        Elimina el Profesional y también el User asociado.
+        Solo permitido para admin (rol ADMIN o is_staff).
+        """
+        profesional = self.get_object()
+        user = profesional.user
+
+        profile = getattr(request.user, "profile", None)
+        es_admin = request.user.is_staff or (
+            profile is not None and getattr(profile, "rol", None) == "ADMIN"
+        )
+
+        if not es_admin:
+            return Response(
+                {"detail": "No tienes permiso para eliminar profesionales."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Primero borramos el Profesional (para que DRF sea feliz)
+        response = super().destroy(request, *args, **kwargs)
+        # Luego borramos el usuario asociado
+        user.delete()
+        return response
+
 
 
 class ClaseViewSet(viewsets.ModelViewSet):
