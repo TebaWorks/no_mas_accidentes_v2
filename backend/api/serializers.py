@@ -24,25 +24,29 @@ class ClienteSerializer(serializers.ModelSerializer):
 
 
 class ProfesionalSerializer(serializers.ModelSerializer):
-    # Lectura
-    user_data = UserSerializer(source="user", read_only=True)
-    # Escritura: solo enviar el id del usuario
-    user_id = serializers.PrimaryKeyRelatedField(
-        source="user",
-        queryset=User.objects.all(),
-        write_only=True,
-    )
+    username = serializers.CharField(source="user.username", read_only=True)
+    nombre_completo = serializers.SerializerMethodField()
+    email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = Profesional
         fields = [
             "id",
-            "user_data",
-            "user_id",
+            "user",
+            "username",
+            "nombre_completo",
+            "email",
             "especialidad",
             "registro_profesional",
             "disponible",
         ]
+        read_only_fields = ["id", "user", "username", "nombre_completo", "email"]
+
+    def get_nombre_completo(self, obj):
+        nombre = obj.user.first_name or ""
+        apellido = obj.user.last_name or ""
+        full = (nombre + " " + apellido).strip()
+        return full or obj.user.username
 
 
 class ClaseSerializer(serializers.ModelSerializer):
@@ -133,3 +137,169 @@ class RegistroClienteSerializer(serializers.Serializer):
         )
 
         return user
+
+class ProfesionalAdminCreateSerializer(serializers.Serializer):
+    # 🔹 Datos para CREAR (solo entrada, no se leen desde el modelo)
+    username = serializers.CharField(max_length=150, write_only=True)
+    password = serializers.CharField(write_only=True, min_length=4)
+    first_name = serializers.CharField(max_length=150, write_only=True)
+    last_name = serializers.CharField(max_length=150, write_only=True)
+    email = serializers.EmailField(write_only=True)
+
+    rut = serializers.CharField(
+        max_length=20,
+        allow_blank=True,
+        required=False,
+        write_only=True,
+    )
+    telefono = serializers.CharField(
+        max_length=20,
+        allow_blank=True,
+        required=False,
+        write_only=True,
+    )
+    direccion = serializers.CharField(
+        max_length=255,
+        allow_blank=True,
+        required=False,
+        write_only=True,
+    )
+
+    especialidad = serializers.CharField(
+        max_length=150,
+        allow_blank=True,
+        required=False,
+    )
+    registro_profesional = serializers.CharField(
+        max_length=50,
+        allow_blank=True,
+        required=False,
+    )
+    disponible = serializers.BooleanField(default=True)
+
+    # 🔹 Datos SOLO LECTURA para la respuesta
+    profesional_id = serializers.IntegerField(read_only=True, source="id")
+    profesional_username = serializers.CharField(
+        read_only=True, source="user.username"
+    )
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Este nombre de usuario ya existe.")
+        return value
+
+    def create(self, validated_data):
+        # Separar bloques de datos
+        username = validated_data.pop("username")
+        password = validated_data.pop("password")
+
+        first_name = validated_data.pop("first_name", "")
+        last_name = validated_data.pop("last_name", "")
+        email = validated_data.pop("email", "")
+
+        rut = validated_data.pop("rut", "")
+        telefono = validated_data.pop("telefono", "")
+        direccion = validated_data.pop("direccion", "")
+
+        especialidad = validated_data.pop("especialidad", "")
+        registro_profesional = validated_data.pop("registro_profesional", "")
+        disponible = validated_data.pop("disponible", True)
+
+        # 1) Crear usuario
+        user = User(
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+        )
+        user.set_password(password)
+        user.save()
+
+        # 2) Crear perfil con rol PROFESIONAL
+        UserProfile.objects.create(
+            user=user,
+            rut=rut,
+            telefono=telefono,
+            direccion=direccion,
+            rol="PROFESIONAL",
+        )
+
+        # 3) Crear registro Profesional
+        profesional = Profesional.objects.create(
+            user=user,
+            especialidad=especialidad,
+            registro_profesional=registro_profesional,
+            disponible=disponible,
+        )
+
+        return profesional
+
+    
+class ProfesionalDetalleSerializer(serializers.ModelSerializer):
+    # Campos del usuario
+    username = serializers.CharField(source="user.username", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", required=False)
+    last_name = serializers.CharField(source="user.last_name", required=False)
+    email = serializers.EmailField(source="user.email", required=False)
+
+    # Campos del perfil (UserProfile)
+    rut = serializers.CharField(
+        source="user.profile.rut",
+        allow_blank=True,
+        required=False,
+    )
+    telefono = serializers.CharField(
+        source="user.profile.telefono",
+        allow_blank=True,
+        required=False,
+    )
+    direccion = serializers.CharField(
+        source="user.profile.direccion",
+        allow_blank=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Profesional
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "rut",
+            "telefono",
+            "direccion",
+            "especialidad",
+            "registro_profesional",
+            "disponible",
+        ]
+
+    def update(self, instance, validated_data):
+        """
+        Actualiza:
+        - user.first_name, user.last_name, user.email
+        - user.profile.rut, telefono, direccion
+        - profesional.especialidad, registro_profesional, disponible
+        """
+        user_data = validated_data.pop("user", {})
+        profile_data = user_data.pop("profile", {})
+
+        user = instance.user
+
+        # Actualizar datos de User
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
+        # Actualizar datos de UserProfile
+        profile = getattr(user, "profile", None)
+        if profile and profile_data:
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+
+        # Actualizar campos del modelo Profesional
+        return super().update(instance, validated_data)
+
+
