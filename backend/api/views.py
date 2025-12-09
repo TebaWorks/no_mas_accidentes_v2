@@ -9,6 +9,9 @@ from .serializers import (
 )
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 
 @api_view(["GET"])
@@ -83,4 +86,15 @@ class ClaseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Más adelante, cuando haya autenticación, aquí usaremos self.request.user
         return serializer.save()
+    
+class MeView(APIView):
+    """
+    Devuelve la info del usuario autenticado + su perfil.
+    GET /api/auth/me/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
 
