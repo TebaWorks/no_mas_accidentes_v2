@@ -101,4 +101,35 @@ class ClaseSerializer(serializers.ModelSerializer):
             return obj.solicitada_por.get_full_name() or obj.solicitada_por.username
         return None
 
+class RegistroClienteSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True, min_length=4)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    email = serializers.EmailField(required=False, allow_blank=True)
 
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Este nombre de usuario ya existe.")
+        return value
+
+    def create(self, validated_data):
+        username = validated_data["username"]
+        password = validated_data.pop("password")
+
+        user = User(
+            username=username,
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+            email=validated_data.get("email", ""),
+        )
+        user.set_password(password)
+        user.save()
+
+        # Crear perfil con rol CLIENTE
+        UserProfile.objects.create(
+            user=user,
+            rol="CLIENTE",
+        )
+
+        return user

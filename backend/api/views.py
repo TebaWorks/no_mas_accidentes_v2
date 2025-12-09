@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from django.contrib.auth.models import User
 from .models import Cliente, Profesional, Clase
 from .serializers import (
@@ -6,6 +6,7 @@ from .serializers import (
     ClienteSerializer,
     ProfesionalSerializer,
     ClaseSerializer,
+    RegistroClienteSerializer
 )
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -98,3 +99,18 @@ class MeView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+class RegistroClienteView(APIView):
+    """
+    Registro público de clientes.
+    Crea un usuario con rol CLIENTE.
+    POST /api/auth/registro-cliente/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = RegistroClienteSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            data = UserSerializer(user).data
+            return Response(data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
