@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, decorators, response, status, generics
 from django.contrib.auth.models import User
-from .models import Cliente, Profesional, Clase, SystemConfig
+from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from .models import UserProfile, Cliente, Profesional, Clase, SystemConfig
 from .serializers import (
     UserSerializer,
     UserAdminSerializer,
@@ -84,10 +86,89 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 
-class ClienteViewSet(viewsets.ModelViewSet):
-    queryset = Cliente.objects.all()
-    serializer_class = ClienteSerializer
-    permission_classes = [permissions.AllowAny]  # luego lo ajustamos por rol
+class ClaseViewSet(viewsets.ModelViewSet):
+    """
+    Vista para gestionar clases/capacitaciones.
+
+    Reglas:
+    - ADMIN: ve y crea/edita/baja todas las clases.
+    - CLIENTE: solo ve sus propias clases y al crear se fuerza su Cliente asociado.
+    - PROFESIONAL: solo ve las clases donde él está asignado.
+    """
+    queryset = Clase.objects.all().select_related(
+        "cliente",
+        "profesional_asignado__user",
+        "solicitada_por",
+    )
+    serializer_class = ClaseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Clase.objects.none()
+
+        # Si es superuser o rol ADMIN -> todo
+        perfil = getattr(user, "profile", None)
+        rol = getattr(perfil, "rol", None)
+
+        if user.is_superuser or rol == "ADMIN":
+            return self.queryset
+
+        # Rol CLIENTE -> solo clases ligadas a su usuario
+        if rol == "CLIENTE":
+            return self.queryset.filter(
+                Q(solicitada_por=user) | Q(cliente__usuario=user)
+            ).distinct()
+
+        # Rol PROFESIONAL -> solo clases donde está asignado
+        if rol == "PROFESIONAL":
+            profesional = getattr(user, "profesional", None)
+            if profesional:
+                return self.queryset.filter(profesional_asignado=profesional)
+            return Clase.objects.none()
+
+        # Cualquier otro rol, nada
+        return Clase.objects.none()
+
+    def perform_create(self, serializer):
+        """
+        Forzamos lógica según rol:
+        - CLIENTE: se toma automáticamente el Cliente asociado a su usuario,
+          se ignora cualquier 'cliente' enviado desde el frontend.
+        - ADMIN: puede crear clases indicando el cliente que quiera.
+        - Otros roles: no pueden crear clases.
+        """
+        user = self.request.user
+        perfil = getattr(user, "profile", None)
+        rol = getattr(perfil, "rol", None)
+
+        if rol == "CLIENTE":
+            # Buscar el cliente asociado al usuario
+            cliente = (
+                Cliente.objects.filter(usuario=user, activo=True).first()
+            )
+            if not cliente:
+                raise ValidationError(
+                    "No tienes un cliente asociado. "
+                    "Contacta al administrador para que vincule tu usuario a una empresa."
+                )
+
+            serializer.save(
+                cliente=cliente,
+                solicitada_por=user,
+                estado="PENDIENTE",
+            )
+            return
+
+        if rol == "ADMIN" or user.is_superuser:
+            # Admin puede crear con los datos que lleguen (incluyendo 'cliente')
+            serializer.save()
+            return
+
+        # PROFs u otros no deberían crear clases
+        raise PermissionDenied("Solo clientes o administradores pueden crear clases.")
+
 
 
 class ProfesionalViewSet(viewsets.ModelViewSet):
