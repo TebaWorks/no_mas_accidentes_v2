@@ -1,8 +1,9 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, decorators, response, status
 from django.contrib.auth.models import User
 from .models import Cliente, Profesional, Clase
 from .serializers import (
     UserSerializer,
+    UserAdminSerializer,
     ClienteSerializer,
     ProfesionalSerializer,
     ClaseSerializer,
@@ -23,25 +24,62 @@ def ping(request):
     return Response({"message": "API NoMasAccidentes funcionando ✅"})
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
-    De momento solo lectura.
-    Permite filtrar por rol del perfil:
-    - /api/usuarios/?rol=CLIENTE
-    - /api/usuarios/?rol=PROFESIONAL
-    - /api/usuarios/?rol=ADMIN
+    Vista para gestión de usuarios.
+
+    - Para admin: CRUD completo + reset password.
+    - Para otros: idealmente solo lectura limitada (pero ya tienes /auth/me para eso).
     """
-    serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]
+    queryset = User.objects.all().select_related("profile")
 
-    def get_queryset(self):
-        qs = User.objects.all().select_related("profile")
-        rol = self.request.query_params.get("rol")  # CLIENTE, PROFESIONAL, ADMIN
+    def get_permissions(self):
+        # Solo admin puede listar, crear, editar, borrar usuarios
+        if self.action in [
+            "list",
+            "retrieve",
+            "create",
+            "update",
+            "partial_update",
+            "destroy",
+            "reset_password",
+        ]:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
 
-        if rol:
-            qs = qs.filter(profile__rol=rol)
+    def get_serializer_class(self):
+        # Admin usa el serializer extendido
+        if self.request and self.request.user.is_staff:
+            return UserAdminSerializer
+        # Para otros casos (si algún día los usas)
+        return UserSerializer
 
-        return qs
+    @decorators.action(detail=True, methods=["post"], url_path="reset-password")
+    def reset_password(self, request, pk=None):
+        """
+        POST /api/usuarios/<id>/reset-password/
+        Body: { "new_password": "xxxx" }
+        """
+        new_password = request.data.get("new_password")
+        if not new_password:
+            return response.Response(
+                {"detail": "new_password es obligatorio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 4:
+            return response.Response(
+                {"detail": "La contraseña debe tener al menos 4 caracteres."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = self.get_object()
+        user.set_password(new_password)
+        user.save()
+        return response.Response(
+            {"detail": "Contraseña actualizada correctamente."},
+            status=status.HTTP_200_OK,
+        )
 
 
 

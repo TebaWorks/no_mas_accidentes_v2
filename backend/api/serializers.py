@@ -17,6 +17,109 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "first_name", "last_name", "email", "profile"]
 
 
+class UserAdminSerializer(serializers.ModelSerializer):
+    # Campos del perfil (UserProfile)
+    rut = serializers.CharField(
+        source="profile.rut",
+        allow_blank=True,
+        required=False,
+    )
+    telefono = serializers.CharField(
+        source="profile.telefono",
+        allow_blank=True,
+        required=False,
+    )
+    direccion = serializers.CharField(
+        source="profile.direccion",
+        allow_blank=True,
+        required=False,
+    )
+    rol = serializers.ChoiceField(
+        source="profile.rol",
+        choices=UserProfile.ROLE_CHOICES,
+        required=False,
+    )
+
+    # Campo extra para crear/cambiar contraseña
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        min_length=4,
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "password",       # solo escritura
+            "first_name",
+            "last_name",
+            "email",
+            "is_active",
+            "rut",
+            "telefono",
+            "direccion",
+            "rol",
+        ]
+        read_only_fields = ["id", "username"]
+
+    def create(self, validated_data):
+        """
+        Crea un usuario + UserProfile ligado, usando los campos de perfil.
+        (OJO: si quisieras crear usuarios sueltos desde aquí).
+        """
+        profile_data = validated_data.pop("profile", {})
+        password = validated_data.pop("password", None)
+
+        user = User(**validated_data)
+
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+
+        UserProfile.objects.create(
+          user=user,
+          rut=profile_data.get("rut", ""),
+          telefono=profile_data.get("telefono", ""),
+          direccion=profile_data.get("direccion", ""),
+          rol=profile_data.get("rol", "CLIENTE"),
+        )
+
+        return user
+
+    def update(self, instance, validated_data):
+        """
+        Permite que el admin modifique:
+        - first_name, last_name, email, is_active
+        - profile.rut, telefono, direccion, rol
+        - password (opcional)
+        """
+        profile_data = validated_data.pop("profile", {})
+        password = validated_data.pop("password", None)
+
+        # Campos de User
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+
+        # Campos de UserProfile
+        profile = getattr(instance, "profile", None)
+        if profile:
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+
+        return instance
+
+
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cliente
