@@ -17,6 +17,8 @@ import AdminClases from "./pages/AdminClases.jsx";
 import Login from "./pages/Login.jsx";
 import RegisterCliente from "./pages/RegisterCliente.jsx";
 import PerfilProfesional from "./pages/PerfilProfesional.jsx";
+import AdminUsuarios from "./pages/AdminUsuarios.jsx";
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -214,6 +216,14 @@ function AppContent() {
                     >
                       Gestionar clases
                     </NavLink>
+                    <NavLink
+                      to="/admin/usuarios"
+                      className={({ isActive }) =>
+                        isActive ? "nav-link active" : "nav-link"
+                      }
+                    >
+                      Gestionar usuarios
+                    </NavLink>
                   </>
                 )}
               </nav>
@@ -281,6 +291,10 @@ function AppContent() {
                       <Route
                         path="/admin/clases"
                         element={<AdminClases />}
+                      />
+                      <Route 
+                      path="/admin/usuarios" 
+                      element={<AdminUsuarios />} 
                       />
                     </>
                   )}
