@@ -8,7 +8,6 @@ import {
 } from "react-router-dom";
 
 import Home from "./pages/Home.jsx";
-import RegistrarClase from "./pages/RegistrarClase.jsx";
 import ClasesCliente from "./pages/ClasesCliente.jsx";
 import ClasesProfesional from "./pages/ClasesProfesional.jsx";
 import AdminClientes from "./pages/AdminClientes.jsx";
@@ -262,10 +261,6 @@ function AppContent() {
                   {/* Cliente */}
                   {rol === "CLIENTE" && (
                     <>
-                      <Route
-                        path="/cliente/registrar-clase"
-                        element={<RegistrarClase />}
-                      />
                       <Route
                         path="/cliente/clases"
                         element={<ClasesCliente />}
