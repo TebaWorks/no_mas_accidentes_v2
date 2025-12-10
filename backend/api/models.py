@@ -252,3 +252,4 @@ class SystemConfig(models.Model):
 
     def __str__(self):
         return self.nombre_sistema or "Configuración del sistema"
+
